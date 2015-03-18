@@ -94,6 +94,9 @@
 		/// information to standard cout.
 		bool silentOutputFlag;
 
+		/// Declares whether the use of the Neighbor-list is enabled.
+		bool neighborListFlag;
+
 		/// Default constructor
 		CommandParameters() :	statusInterval(DEFAULT_STATUS_INTERVAL),
 								stateInterval(0),
@@ -111,7 +114,8 @@
 								threadFlag(false),
 								serialFlag(false),
 								parallelFlag(false),
-								silentOutputFlag(false) {}
+								silentOutputFlag(false),
+								neighborListFlag(false)		{}
 	};
 
 	/// Goes through each argument specified from the command line and checks

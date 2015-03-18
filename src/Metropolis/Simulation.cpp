@@ -132,9 +132,16 @@ void Simulation::run()
 		}
 		else
 		{
-			// ***** TODO: add cmd line arg to switch between nlc and reg
-			//oldEnergy = SerialCalcs::calcSystemEnergy(molecules, enviro);
-			oldEnergy = SerialCalcs::calcEnergy_NLC(molecules, enviro);
+			/*if (args.useNeighborList)
+			{
+				std::cout << "Using neighbor-list for energy calc" << std::endl;
+				oldEnergy = SerialCalcs::calcEnergy_NLC(molecules, enviro);
+			}
+			else
+			{*/
+				//std::cout << "Using original system energy calc" << std::endl;
+				oldEnergy = SerialCalcs::calcSystemEnergy(molecules, enviro);
+			//}
 		}
 	}
 	
