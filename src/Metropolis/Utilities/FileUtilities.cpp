@@ -52,12 +52,20 @@ bool loadBoxData(string inputPath, InputFileType inputType, Box* box, long* star
             return false;
         }
 
-        moleculeVector = zmatrix_scanner.buildMolecule(0);        
+        moleculeVector = zmatrix_scanner.buildMolecule(0);
         enviro = config_scanner.getEnviro();
         *steps = config_scanner.getSteps();
         *startStep = 0;
 
-        box->environment = new Environment(enviro);
+	if (moleculeVector.size() != enviro->primaryAtomIndexDefinitions) 
+        {
+            std::cerr << "Error: loadBoxData(): The number of molecules read from the Z Matrix file (" << moleculeVector.size() 
+	    << ") does not equal the number of primary index definitions in the config file (" 
+	    << enviro->primaryAtomIndexDefinitions << ")" << std::endl;
+            return false;
+        }
+        
+	box->environment = new Environment(enviro);
 
         if (!buildBoxData(enviro, moleculeVector, box))
         {
@@ -783,7 +791,8 @@ bool ConfigScanner::readInConfig(string configpath)
                     if(line.length() > 0){
 						// Convert to a zero-based index
 					
-    						char *indexVector;
+    						*enviro.primaryAtomIndexConfigLine = line;
+						char *indexVector;
     						char *charLine = (char *) malloc(sizeof(char) * (line.size()+1));
     						strcpy(charLine, line.c_str());
     						indexVector = strtok(charLine, ",");
@@ -813,6 +822,7 @@ bool ConfigScanner::readInConfig(string configpath)
 						    //cout << "indexVector element " << (indexVector) << " being converted to int" << endl;
 
 						    std::string sIndexVector = indexVector;
+						    enviro.primaryAtomIndexDefinitions++;
 						    char* c;
 						    if ((c=strchr(indexVector, '['))!=NULL)
 						    {
@@ -848,13 +858,13 @@ bool ConfigScanner::readInConfig(string configpath)
 						}
 						free (charLine);
 
-						// for (int i = 0; i < (*(enviro.primaryAtomIndexArray)).size(); i++)
-						// {
-						//     for (int j = 0; j < (*(*(enviro.primaryAtomIndexArray))[i]).size(); j++)
-						//     {
-						// 	cout << "Primary index at " << i << "-" << j << " is " << (*(*(enviro.primaryAtomIndexArray))[i])[j] << endl;
-						//     }
-						// }
+						 for (int i = 0; i < (*(enviro.primaryAtomIndexArray)).size(); i++)
+						 {
+						     for (int j = 0; j < (*(*(enviro.primaryAtomIndexArray))[i]).size(); j++)
+						     {
+						 	cout << "Primary index at " << i << "-" << j << " is " << (*(*(enviro.primaryAtomIndexArray))[i])[j] << endl;
+						     }
+						}
 						
 						//exit(0);
 						//enviro.primaryAtomIndex=atoi(line.c_str()) - 1;
@@ -1193,6 +1203,7 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
 	fileName = filename;
 	oplsScanner = scanner;
 	startNewMolecule = false;
+	Environment enviro = Environment();
 
 	if (fileName.empty())
 	{
@@ -1203,7 +1214,6 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
     stringstream output;
     int numOfLines=0;
 
-    //cout << "***OPENING ZMATRIX FILE***" << endl;
     ifstream zmatrixScanner(fileName.c_str());
     if( !zmatrixScanner.is_open() )
     {
@@ -1216,7 +1226,6 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
 	int moleculeNum = -1;
         while( zmatrixScanner.good() )
         {
-	    //cout << "SETTING THINGS UP..." << endl;
             numOfLines++;
             getline(zmatrixScanner,line);
 
@@ -1235,7 +1244,6 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
 
             if (startNewMolecule)
             {
-		//cout << "ABOUT TO START ALLOCATING SOME MEMORY" << endl;
                 Atom* atomArray;
                 Bond* bondArray;
                 Angle* angleArray;
@@ -1243,13 +1251,8 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
                 moleculeNum++;
                 workingMolecule.type = moleculeNum;
                 
-                //Atom *garbageAtom = new Atom;
-
-		//cout << "START OF THE PROBLEM" << endl;
 		double atomVectorSize = atomVector.size();
 		int sizeOfAtom = sizeof(Atom);
-
-		//cout << "Atom Vector Size: " << atomVectorSize << "  Size of Atom: " << sizeOfAtom << endl;
 
 		atomArray = (Atom*) malloc(sizeof(Atom) * atomVector.size());
                 bondArray = (Bond*) malloc(sizeof(Bond) * bondVector.size());
@@ -1258,12 +1261,8 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
 
                 for (int i = 0; i < atomVector.size(); i++)
                 {
-		    //cout << "Size of the atom Vector: " << atomVector.size() << endl;
-		    //cout << "Name of ATOMVECTOR[" << i << "] = " << *atomVector[i].name << endl;
                     atomArray[i] = atomVector[i];
-		    //cout << "END OF ELEMENT " << i << endl;
                 }
-		//cout << "END OF THE FINAL PROBLEM" << endl;
                 for (int i = 0; i < bondVector.size(); i++)
                 {
                     bondArray[i] = bondVector[i];
@@ -1278,7 +1277,6 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
                 }
 
 		
-		//cout << "MoleculeNum: " << moleculeNum << endl;
                 moleculePattern.push_back(createMolecule(-1, moleculeNum, atomArray, angleArray, bondArray, dihedralArray, 
                      atomVector.size(), angleVector.size(), bondVector.size(), dihedralVector.size()));
 
@@ -1291,12 +1289,11 @@ bool ZmatrixScanner::readInZmatrix(string filename, OplsScanner* scanner)
             } 
         }
     }
-
+    
+    
     zmatrixScanner.close();    	 
 
 	
-    //cout << "VECTORS HAVE BEEN CLEARED AND FILE IS CLOSED" << endl;
-
     return true;
 }
 
@@ -1316,8 +1313,6 @@ void ZmatrixScanner::parseLine(string line, int numOfLines)
         ss << line;    	
         ss >> atomID >> atomType >> oplsA >> oplsB >> bondWith >> bondDistance >> angleWith >> angleMeasure >> dihedralWith >> dihedralMeasure;
 
-        //cout << "ThIS IS THE ATOMTYPE BEING READ IN: " << atomType << endl;
-
 	//setup structures for permanent encapsulation
         Atom lineAtom;
         Bond lineBond;
@@ -1326,7 +1321,6 @@ void ZmatrixScanner::parseLine(string line, int numOfLines)
 		  
         if (oplsA.compare("-1") != 0)
         {
-	    //cout << "oplsA enterned" << endl;
             lineAtom = oplsScanner->getAtom(oplsA);
             lineAtom.id = atoi(atomID.c_str());
             lineAtom.x = 0;
@@ -1336,7 +1330,6 @@ void ZmatrixScanner::parseLine(string line, int numOfLines)
         }
         else//dummy atom
         {
-	    //std::string dummy = "X";
             lineAtom = createAtom(atoi(atomID.c_str()), -1, -1, -1, -1, -1, -1, atomType);
         }
 	
@@ -2287,7 +2280,7 @@ void StateScanner::outputState(Environment *environment, Molecule *molecules, in
         << environment->z << " " << environment->numOfMolecules << " "
         << environment->numOfAtoms << " " << environment->temp << " "
         << environment->cutoff << " " << environment->maxTranslation << " "
-        << environment->maxRotation << " " << environment->primaryAtomIndex << " "
+        << environment->maxRotation << " " << *environment->primaryAtomIndexConfigLine << " "
         << environment->randomseed
         << std::endl;
     outFile << step << std::endl;  // The current simulation step
